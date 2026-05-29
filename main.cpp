@@ -1,6 +1,6 @@
 #include <SFML/Graphics.hpp>
-#include <cstdlib> // rand ve srand fonksiyonları için kesin çözüm
-#include <ctime>   // time fonksiyonu için kesin çözüm
+#include <cstdlib> 
+#include <ctime>   
 
 const int SATIR = 20;
 const int SUTUN = 10;
@@ -20,12 +20,10 @@ struct Nokta { int x, y; };
 Nokta a[4], b[4], hayalet[4];
 
 // ÇARPIŞMA VE ZEMİN KONTROLÜ
-// Derleyici hatalarını önlemek için işaretçi (pointer) altyapısına geçildi
 bool kontrol(Nokta* parca)
 {
     for (int i = 0; i < 4; i++)
     {
-        // Y ekseninde eksiye düşme (y < 0) kontrolü de eklenerek güvenlik artırıldı
         if (parca[i].x < 0 || parca[i].x >= SUTUN || parca[i].y < 0 || parca[i].y >= SATIR)
             return false;
 
@@ -58,6 +56,9 @@ int main()
 
     sf::Clock saat;
     float timer = 0, gecikme = 0.5f;
+
+    // --- SKOR DEĞİŞKENİ EKLENDİ ---
+    int skor = 0;
 
     while (window.isOpen())
     {
@@ -92,7 +93,6 @@ int main()
 
                     for (int i = 0; i < 4; i++) oyunAlani[a[i].y][a[i].x] = renkNumarasi;
 
-                    // Yeni şekil üretimi
                     n = rand() % 7;
                     renkNumarasi = n + 1;
                     for (int i = 0; i < 4; i++) {
@@ -144,6 +144,40 @@ int main()
             timer = 0;
         }
 
+        // --- 4. SATIR SİLME VE SKOR ALGORİTMASI ---
+        // Algoritma en alt satırdan başlayarak yukarı doğru kontrol eder.
+        for (int i = SATIR - 1; i >= 0; i--)
+        {
+            bool satirDolu = true;
+            for (int j = 0; j < SUTUN; j++)
+            {
+                if (oyunAlani[i][j] == 0) {
+                    satirDolu = false;
+                    break;
+                }
+            }
+
+            // Eğer o anki satır tamamen doluysa
+            if (satirDolu)
+            {
+                skor += 10; // Skoru arka planda 10 artır
+
+                // Üstteki tüm satırları bir aşağı kaydır
+                for (int k = i; k > 0; k--)
+                {
+                    for (int j = 0; j < SUTUN; j++)
+                    {
+                        oyunAlani[k][j] = oyunAlani[k - 1][j];
+                    }
+                }
+                // En üst satırı boşluklarla doldur
+                for (int j = 0; j < SUTUN; j++) oyunAlani[0][j] = 0;
+
+                // ÖNEMLİ: Üst satır aşağı düştüğü için aynı satırı (i) bir kez daha kontrol etmeliyiz
+                i++;
+            }
+        }
+
         // HAYALET BLOK KOORDİNAT HESAPLAMA
         for (int i = 0; i < 4; i++) hayalet[i] = a[i];
         while (kontrol(hayalet))
@@ -171,7 +205,7 @@ int main()
         // 2. Hayalet Blok (Yarı Saydam Gölgelendirme)
         for (int i = 0; i < 4; i++) {
             sf::Color hayaletRengi = renkler[renkNumarasi];
-            hayaletRengi.a = 40; // Opaklık ayarı
+            hayaletRengi.a = 40;
 
             kare.setFillColor(hayaletRengi);
             kare.setOutlineColor(renkler[renkNumarasi]);
