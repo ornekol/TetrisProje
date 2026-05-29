@@ -1,5 +1,6 @@
 #include <SFML/Graphics.hpp>
-#include <time.h>
+#include <cstdlib> // rand ve srand fonksiyonları için kesin çözüm
+#include <ctime>   // time fonksiyonu için kesin çözüm
 
 const int SATIR = 20;
 const int SUTUN = 10;
@@ -12,21 +13,23 @@ int sekiller[7][4] = {
     {3,5,4,7}, // T Şekli
     {2,3,5,7}, // L Şekli
     {3,5,7,6}, // J Şekli
-    {2,3,4,5}  // O Şekli (Kare)
+    {2,3,4,5}  // O Şekli
 };
 
-struct Nokta { int x, y; } a[4], b[4];
+struct Nokta { int x, y; };
+Nokta a[4], b[4], hayalet[4];
 
 // ÇARPIŞMA VE ZEMİN KONTROLÜ
-bool kontrol()
+// Derleyici hatalarını önlemek için işaretçi (pointer) altyapısına geçildi
+bool kontrol(Nokta* parca)
 {
     for (int i = 0; i < 4; i++)
     {
-        // Ekran sınırlarından çıktı mı?
-        if (a[i].x < 0 || a[i].x >= SUTUN || a[i].y >= SATIR)
+        // Y ekseninde eksiye düşme (y < 0) kontrolü de eklenerek güvenlik artırıldı
+        if (parca[i].x < 0 || parca[i].x >= SUTUN || parca[i].y < 0 || parca[i].y >= SATIR)
             return false;
-        // Gideceği yerde başka bir blok (taşa dönmüş parça) var mı?
-        else if (oyunAlani[a[i].y][a[i].x] != 0)
+
+        if (oyunAlani[parca[i].y][parca[i].x] != 0)
             return false;
     }
     return true;
@@ -34,12 +37,11 @@ bool kontrol()
 
 int main()
 {
-    srand(time(0));
+    srand(static_cast<unsigned int>(time(0)));
     sf::RenderWindow window(sf::VideoMode(SUTUN * 32, SATIR * 32), "SFML Tetris");
 
     sf::RectangleShape kare(sf::Vector2f(32.0f, 32.0f));
     kare.setOutlineThickness(-1.f);
-    kare.setOutlineColor(sf::Color(50, 50, 50));
 
     sf::Color renkler[8] = {
         sf::Color::Black, sf::Color::Cyan, sf::Color::Red, sf::Color::Green,
@@ -72,24 +74,44 @@ int main()
             if (event.type == sf::Event::Closed)
                 window.close();
 
-            // KLAVYE KONTROLLERİ
             if (event.type == sf::Event::KeyPressed)
             {
                 if (event.key.code == sf::Keyboard::Up) dondur = true;
                 else if (event.key.code == sf::Keyboard::Left) dx = -1;
                 else if (event.key.code == sf::Keyboard::Right) dx = 1;
+
+                // SPACE: ANINDA İNDİRME (HARD DROP)
+                else if (event.key.code == sf::Keyboard::Space)
+                {
+                    while (kontrol(a))
+                    {
+                        for (int i = 0; i < 4; i++) b[i] = a[i];
+                        for (int i = 0; i < 4; i++) a[i].y += 1;
+                    }
+                    for (int i = 0; i < 4; i++) a[i] = b[i];
+
+                    for (int i = 0; i < 4; i++) oyunAlani[a[i].y][a[i].x] = renkNumarasi;
+
+                    // Yeni şekil üretimi
+                    n = rand() % 7;
+                    renkNumarasi = n + 1;
+                    for (int i = 0; i < 4; i++) {
+                        a[i].x = sekiller[n][i] % 2 + 4;
+                        a[i].y = sekiller[n][i] / 2;
+                    }
+                    timer = 0;
+                }
             }
         }
 
-        // Aşağı tuşuna basılı tutunca hızlı düşme
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) gecikme = 0.05f;
         else gecikme = 0.5f;
 
-        // 1. SAĞA VE SOLA HAREKET
+        // 1. Sağa ve Sola Hareket
         for (int i = 0; i < 4; i++) { b[i] = a[i]; a[i].x += dx; }
-        if (!kontrol()) { for (int i = 0; i < 4; i++) a[i] = b[i]; }
+        if (!kontrol(a)) { for (int i = 0; i < 4; i++) a[i] = b[i]; }
 
-        // 2. DÖNDÜRME
+        // 2. Döndürme
         if (dondur)
         {
             Nokta merkez = a[1];
@@ -100,21 +122,18 @@ int main()
                 a[i].x = merkez.x - x;
                 a[i].y = merkez.y + y;
             }
-            if (!kontrol()) { for (int i = 0; i < 4; i++) a[i] = b[i]; }
+            if (!kontrol(a)) { for (int i = 0; i < 4; i++) a[i] = b[i]; }
         }
 
-        // 3. AŞAĞI DÜŞME VE TAŞA DÖNME
+        // 3. Zamanlayıcı ile Aşağı Düşme
         if (timer > gecikme)
         {
             for (int i = 0; i < 4; i++) { b[i] = a[i]; a[i].y += 1; }
 
-            // Eğer zemine veya başka bir bloğa çarptıysa
-            if (!kontrol())
+            if (!kontrol(a))
             {
-                // Parçayı matrise kalıcı olarak yazdır (Taşa çevir)
                 for (int i = 0; i < 4; i++) oyunAlani[b[i].y][b[i].x] = renkNumarasi;
 
-                // Yeni şekil fırlat
                 n = rand() % 7;
                 renkNumarasi = n + 1;
                 for (int i = 0; i < 4; i++) {
@@ -125,12 +144,22 @@ int main()
             timer = 0;
         }
 
+        // HAYALET BLOK KOORDİNAT HESAPLAMA
+        for (int i = 0; i < 4; i++) hayalet[i] = a[i];
+        while (kontrol(hayalet))
+        {
+            for (int i = 0; i < 4; i++) hayalet[i].y += 1;
+        }
+        for (int i = 0; i < 4; i++) hayalet[i].y -= 1;
+
+
         // --- ÇİZDİRME (RENDER) ---
         window.clear(sf::Color::Black);
 
-        // Arka planı ve sabitlenmiş blokları çizdir
+        // 1. Izgara ve Sabit Bloklar
         for (int i = 0; i < SATIR; i++) {
             for (int j = 0; j < SUTUN; j++) {
+                kare.setOutlineColor(sf::Color(50, 50, 50));
                 if (oyunAlani[i][j] == 0) kare.setFillColor(sf::Color(20, 20, 20));
                 else kare.setFillColor(renkler[oyunAlani[i][j]]);
 
@@ -139,9 +168,21 @@ int main()
             }
         }
 
-        // Düşen aktif şekli çizdir
+        // 2. Hayalet Blok (Yarı Saydam Gölgelendirme)
+        for (int i = 0; i < 4; i++) {
+            sf::Color hayaletRengi = renkler[renkNumarasi];
+            hayaletRengi.a = 40; // Opaklık ayarı
+
+            kare.setFillColor(hayaletRengi);
+            kare.setOutlineColor(renkler[renkNumarasi]);
+            kare.setPosition(hayalet[i].x * 32.f, hayalet[i].y * 32.f);
+            window.draw(kare);
+        }
+
+        // 3. Aktif Gerçek Blok
         for (int i = 0; i < 4; i++) {
             kare.setFillColor(renkler[renkNumarasi]);
+            kare.setOutlineColor(sf::Color(50, 50, 50));
             kare.setPosition(a[i].x * 32.f, a[i].y * 32.f);
             window.draw(kare);
         }
