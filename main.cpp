@@ -44,18 +44,23 @@ const int skoryazisi[4][5][3] = {
 // BİLGİ PANELİNİ ÇİZEN FONKSİYON
 void retroPanelCiz(sf::RenderWindow& window, int skor)
 {
-    // YAZIYI TAM ORTALAMAK İÇİN BOŞLUK 15 PİKSEL OLARAK AYARLANDI
     float baslangicX = SUTUN * 32.f + 15.f;
     float pikselBoyutu = 6.0f;
     sf::RectangleShape piksel(sf::Vector2f(pikselBoyutu, pikselBoyutu));
 
-    // 1. Ayırıcı Dikey Çizgi Çiz
+    // 1. Ayırıcı Dikey Çizgi 
     sf::RectangleShape dikeyCizgi(sf::Vector2f(2.f, SATIR * 32.f));
     dikeyCizgi.setFillColor(sf::Color(70, 70, 70));
     dikeyCizgi.setPosition(SUTUN * 32.f, 0.f);
     window.draw(dikeyCizgi);
 
-    // 2. "SKOR" Başlığını Çiz (Gri Renkte)
+    // 2. Skor ile Sıradaki Şekil Alanını Ayıran Yatay Çizgi
+    sf::RectangleShape yatayCizgi(sf::Vector2f(140.f, 2.f));
+    yatayCizgi.setFillColor(sf::Color(70, 70, 70));
+    yatayCizgi.setPosition(SUTUN * 32.f, 130.f);
+    window.draw(yatayCizgi);
+
+    // 3. "SKOR" Başlığını Çiz 
     piksel.setFillColor(sf::Color(180, 180, 180));
     float yaziX = baslangicX;
     float yaziY = 30.f;
@@ -71,11 +76,10 @@ void retroPanelCiz(sf::RenderWindow& window, int skor)
         yaziX += 30.f;
     }
 
-    // 3. Gerçek Skor Sayılarını Çiz (Beyaz Renkte)
+    // 4. Gerçek Skor Sayılarını Çiz 
     piksel.setFillColor(sf::Color::White);
     std::string sayiStr = std::to_string(skor);
 
-    // Rakamların da "SKOR" yazısının altına güzel ortalanması için offset ayarlandı
     float sayiX = baslangicX + 27.f;
     float sayiY = 80.f;
 
@@ -111,7 +115,6 @@ int main()
 {
     srand(static_cast<unsigned int>(time(0)));
 
-    // Sağ boşluk 140 piksel
     sf::RenderWindow window(sf::VideoMode(SUTUN * 32 + 140, SATIR * 32), "SFML Tetris");
 
     sf::RectangleShape kare(sf::Vector2f(32.0f, 32.0f));
@@ -125,6 +128,9 @@ int main()
     int n = rand() % 7;
     int renkNumarasi = n + 1;
 
+    int siradakiN = rand() % 7;
+    int siradakiRenkNumarasi = siradakiN + 1;
+
     for (int i = 0; i < 4; i++) {
         a[i].x = sekiller[n][i] % 2 + 4;
         a[i].y = sekiller[n][i] / 2;
@@ -132,6 +138,7 @@ int main()
 
     sf::Clock saat;
     float timer = 0, gecikme = 0.5f;
+    float kilitTimer = 0.0f; // YENİ: Lock Delay Sayacı
     int skor = 0;
 
     while (window.isOpen())
@@ -155,6 +162,7 @@ int main()
                 else if (event.key.code == sf::Keyboard::Left) dx = -1;
                 else if (event.key.code == sf::Keyboard::Right) dx = 1;
 
+                // SPACE: ANINDA İNDİRME (HARD DROP)
                 else if (event.key.code == sf::Keyboard::Space)
                 {
                     while (kontrol(a))
@@ -166,13 +174,18 @@ int main()
 
                     for (int i = 0; i < 4; i++) oyunAlani[a[i].y][a[i].x] = renkNumarasi;
 
-                    n = rand() % 7;
-                    renkNumarasi = n + 1;
+                    n = siradakiN;
+                    renkNumarasi = siradakiRenkNumarasi;
                     for (int i = 0; i < 4; i++) {
                         a[i].x = sekiller[n][i] % 2 + 4;
                         a[i].y = sekiller[n][i] / 2;
                     }
+
+                    siradakiN = rand() % 7;
+                    siradakiRenkNumarasi = siradakiN + 1;
+
                     timer = 0;
+                    kilitTimer = 0.0f; // Hard drop sonrası kilit sayacını sıfırla
                 }
             }
         }
@@ -180,9 +193,11 @@ int main()
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) gecikme = 0.05f;
         else gecikme = 0.5f;
 
+        // 1. Sağa ve Sola Hareket
         for (int i = 0; i < 4; i++) { b[i] = a[i]; a[i].x += dx; }
         if (!kontrol(a)) { for (int i = 0; i < 4; i++) a[i] = b[i]; }
 
+        // 2. Döndürme
         if (dondur)
         {
             Nokta merkez = a[1];
@@ -196,25 +211,51 @@ int main()
             if (!kontrol(a)) { for (int i = 0; i < 4; i++) a[i] = b[i]; }
         }
 
-        if (timer > gecikme)
+        // --- 3. LOCK DELAY (KİLİTLENME GECİKMESİ) VE DÜŞÜŞ ---
+        bool asagiInilebilir = true;
+        for (int i = 0; i < 4; i++) { b[i] = a[i]; a[i].y += 1; }
+        if (!kontrol(a)) asagiInilebilir = false; // Bir alt satır doluysa inilemez
+        for (int i = 0; i < 4; i++) a[i] = b[i]; // Testi geri al
+
+        if (!asagiInilebilir)
         {
-            for (int i = 0; i < 4; i++) { b[i] = a[i]; a[i].y += 1; }
+            // Parça zemine veya başka bir bloğa değiyorsa süreyi başlat
+            kilitTimer += zaman;
 
-            if (!kontrol(a))
+            // 0.4 saniye (400ms) boyunca oyuncunun kaydırmasına izin ver
+            if (kilitTimer > 0.4f)
             {
-                for (int i = 0; i < 4; i++) oyunAlani[b[i].y][b[i].x] = renkNumarasi;
+                for (int i = 0; i < 4; i++) oyunAlani[a[i].y][a[i].x] = renkNumarasi;
 
-                n = rand() % 7;
-                renkNumarasi = n + 1;
+                n = siradakiN;
+                renkNumarasi = siradakiRenkNumarasi;
                 for (int i = 0; i < 4; i++) {
                     a[i].x = sekiller[n][i] % 2 + 4;
                     a[i].y = sekiller[n][i] / 2;
                 }
+
+                siradakiN = rand() % 7;
+                siradakiRenkNumarasi = siradakiN + 1;
+
+                timer = 0;
+                kilitTimer = 0.0f;
             }
-            timer = 0;
+        }
+        else
+        {
+            // Eğer blok havadaysa (veya oyuncu sağ/sola çekip boşluğa getirdiyse)
+            // Kilitlenme süresini iptal edip sayacı sıfırla
+            kilitTimer = 0.0f;
+
+            // Normal zamanlayıcı ile aşağı düşme
+            if (timer > gecikme)
+            {
+                for (int i = 0; i < 4; i++) a[i].y += 1;
+                timer = 0;
+            }
         }
 
-        // SATIR SİLME VE SKOR
+        // 4. SATIR SİLME VE SKOR
         for (int i = SATIR - 1; i >= 0; i--)
         {
             bool satirDolu = true;
@@ -237,6 +278,7 @@ int main()
             }
         }
 
+        // Hayalet Blok Koordinat Hesaplama
         for (int i = 0; i < 4; i++) hayalet[i] = a[i];
         while (kontrol(hayalet))
             for (int i = 0; i < 4; i++) hayalet[i].y += 1;
@@ -273,7 +315,22 @@ int main()
             window.draw(kare);
         }
 
+        // Panel ve Skor Metni
         retroPanelCiz(window, skor);
+
+        // Sıradaki Şekil Göstergesi
+        float siradakiOffsetX = SUTUN * 32.f + 40.f;
+        float siradakiOffsetY = 180.f;
+
+        for (int i = 0; i < 4; i++) {
+            int siradakiX = sekiller[siradakiN][i] % 2;
+            int siradakiY = sekiller[siradakiN][i] / 2;
+
+            kare.setFillColor(renkler[siradakiRenkNumarasi]);
+            kare.setOutlineColor(sf::Color(50, 50, 50));
+            kare.setPosition(siradakiOffsetX + (siradakiX * 32.f), siradakiOffsetY + (siradakiY * 32.f));
+            window.draw(kare);
+        }
 
         window.display();
     }
