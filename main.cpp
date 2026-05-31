@@ -3,6 +3,7 @@
 #include <ctime>   
 #include <string>
 #include <vector> 
+#include <fstream> // YENİ: Dosya Okuma/Yazma (File I/O) için eklendi
 
 const int SATIR = 20;
 const int SUTUN = 10;
@@ -21,9 +22,9 @@ int sekiller[7][4] = {
 struct Nokta { int x, y; };
 Nokta a[4], b[4], hayalet[4];
 
-// OYUN ALANI KAYDIRMA OFSETİ (Sol panel eklendiği için Izgara merkezde)
+// OYUN ALANI KAYDIRMA OFSETİ
 const float GRID_X = 120.f;
-const float SAG_PANEL_X = 440.f; // 120 (Sol) + 320 (Oyun) = 440
+const float SAG_PANEL_X = 440.f;
 
 // --- MODERN TETRIS: KUYRUK VE 7-BAG ALGORİTMASI ---
 std::vector<int> siradakiParcalar;
@@ -82,6 +83,22 @@ const int levelYazisi[5][5][3] = {
     {{1,0,0},{1,0,0},{1,0,0},{1,0,0},{1,1,1}}
 };
 
+const int holdYazisi[4][5][3] = {
+    {{1,0,1},{1,0,1},{1,1,1},{1,0,1},{1,0,1}},
+    {{1,1,1},{1,0,1},{1,0,1},{1,0,1},{1,1,1}},
+    {{1,0,0},{1,0,0},{1,0,0},{1,0,0},{1,1,1}},
+    {{1,1,0},{1,0,1},{1,0,1},{1,0,1},{1,1,0}}
+};
+
+// YENİ: REKOR Yazısı Matrisi (R, E, K, O, R)
+const int rekorYazisi[5][5][3] = {
+    {{1,1,0},{1,0,1},{1,1,0},{1,0,1},{1,0,1}}, // R
+    {{1,1,1},{1,0,0},{1,1,0},{1,0,0},{1,1,1}}, // E
+    {{1,0,1},{1,1,0},{1,0,0},{1,1,0},{1,0,1}}, // K
+    {{1,1,1},{1,0,1},{1,0,1},{1,0,1},{1,1,1}}, // O
+    {{1,1,0},{1,0,1},{1,1,0},{1,0,1},{1,0,1}}  // R
+};
+
 const int gameYazisi[4][5][3] = {
     {{1,1,1},{1,0,0},{1,0,1},{1,0,1},{1,1,1}},
     {{0,1,0},{1,0,1},{1,1,1},{1,0,1},{1,0,1}},
@@ -96,21 +113,13 @@ const int overYazisi[4][5][3] = {
     {{1,1,0},{1,0,1},{1,1,0},{1,0,1},{1,0,1}}
 };
 
-// YENİ: HOLD YAZISI MATRİSİ (H, O, L, D)
-const int holdYazisi[4][5][3] = {
-    {{1,0,1},{1,0,1},{1,1,1},{1,0,1},{1,0,1}},
-    {{1,1,1},{1,0,1},{1,0,1},{1,0,1},{1,1,1}},
-    {{1,0,0},{1,0,0},{1,0,0},{1,0,0},{1,1,1}},
-    {{1,1,0},{1,0,1},{1,0,1},{1,0,1},{1,1,0}}
-};
 
-// YENİ: SOL PANEL (KASA) ÇİZİM FONKSİYONU
-void solPanelCiz(sf::RenderWindow& window, int holdParca, sf::Color renkler[])
+// SOL PANEL ÇİZİM FONKSİYONU (Yüksek Skor Parametresi Eklendi)
+void solPanelCiz(sf::RenderWindow& window, int holdParca, sf::Color renkler[], int enYuksekSkor)
 {
     float pikselBoyutu = 6.0f;
     sf::RectangleShape piksel(sf::Vector2f(pikselBoyutu, pikselBoyutu));
 
-    // Sol panel ayırıcı çizgisi (Oyun alanıyla arasına)
     sf::RectangleShape dikeyCizgi(sf::Vector2f(2.f, SATIR * 32.f));
     dikeyCizgi.setFillColor(sf::Color(70, 70, 70));
     dikeyCizgi.setPosition(GRID_X - 2.f, 0.f);
@@ -137,7 +146,6 @@ void solPanelCiz(sf::RenderWindow& window, int holdParca, sf::Color renkler[])
         yaziX += 26.f;
     }
 
-    // Kasadaki parçayı çizdir (Eğer varsa)
     if (holdParca != -1) {
         float kucukKareBoyut = 14.f;
         sf::RectangleShape kucukKare(sf::Vector2f(kucukKareBoyut, kucukKareBoyut));
@@ -154,6 +162,40 @@ void solPanelCiz(sf::RenderWindow& window, int holdParca, sf::Color renkler[])
             kucukKare.setPosition(holdOffsetX + (pX * kucukKareBoyut), 70.f + (pY * kucukKareBoyut));
             window.draw(kucukKare);
         }
+    }
+
+    // YENİ: "REKOR" Başlığı
+    piksel.setFillColor(sf::Color(180, 180, 180));
+    float rekorYaziX = 5.f;
+    float rekorYaziY = 300.f;
+    for (int h = 0; h < 5; h++) {
+        for (int i = 0; i < 5; i++) {
+            for (int j = 0; j < 3; j++) {
+                if (rekorYazisi[h][i][j] == 1) {
+                    piksel.setPosition(rekorYaziX + (j * (pikselBoyutu + 1)), rekorYaziY + (i * (pikselBoyutu + 1)));
+                    window.draw(piksel);
+                }
+            }
+        }
+        rekorYaziX += 23.f;
+    }
+
+    // YENİ: En Yüksek Skor Rakamları
+    piksel.setFillColor(sf::Color::Cyan); // Rekoru dikkat çekici bir renkle yazdıralım
+    std::string rekorStr = std::to_string(enYuksekSkor);
+    float rekorSayiX = 15.f;
+    float rekorSayiY = 350.f;
+    for (char c : rekorStr) {
+        int rakam = c - '0';
+        for (int i = 0; i < 5; i++) {
+            for (int j = 0; j < 3; j++) {
+                if (rakamlar[rakam][i][j] == 1) {
+                    piksel.setPosition(rekorSayiX + (j * (pikselBoyutu + 1)), rekorSayiY + (i * (pikselBoyutu + 1)));
+                    window.draw(piksel);
+                }
+            }
+        }
+        rekorSayiX += 28.f;
     }
 }
 
@@ -174,7 +216,6 @@ void sagPanelCiz(sf::RenderWindow& window, int skor, int level)
     yatayCizgi.setPosition(SAG_PANEL_X, 130.f);
     window.draw(yatayCizgi);
 
-    // SKOR Yazısı
     piksel.setFillColor(sf::Color(180, 180, 180));
     float yaziX = baslangicX;
     float yaziY = 30.f;
@@ -190,7 +231,6 @@ void sagPanelCiz(sf::RenderWindow& window, int skor, int level)
         yaziX += 30.f;
     }
 
-    // Skor Rakamları
     piksel.setFillColor(sf::Color::White);
     std::string sayiStr = std::to_string(skor);
     float sayiX = baslangicX + 27.f;
@@ -208,7 +248,6 @@ void sagPanelCiz(sf::RenderWindow& window, int skor, int level)
         sayiX += 28.f;
     }
 
-    // LEVEL Yazısı
     piksel.setFillColor(sf::Color(180, 180, 180));
     float lvlYaziX = baslangicX - 5.f;
     float lvlYaziY = 470.f;
@@ -224,7 +263,6 @@ void sagPanelCiz(sf::RenderWindow& window, int skor, int level)
         lvlYaziX += 24.f;
     }
 
-    // Level Rakamları
     piksel.setFillColor(sf::Color::Yellow);
     std::string levelStr = std::to_string(level);
     float lvlSayiX = baslangicX + 35.f;
@@ -260,7 +298,14 @@ int main()
 {
     srand(static_cast<unsigned int>(time(0)));
 
-    // Genişlik: 120 (Sol) + 320 (Oyun) + 140 (Sağ) = 580 Piksel
+    // YENİ: Başlangıçta dosyadan yüksek skoru oku
+    int enYuksekSkor = 0;
+    std::ifstream dosyaOku("skor.txt");
+    if (dosyaOku.is_open()) {
+        dosyaOku >> enYuksekSkor;
+        dosyaOku.close();
+    }
+
     sf::RenderWindow window(sf::VideoMode(580, SATIR * 32), "SFML Tetris");
 
     sf::RectangleShape kare(sf::Vector2f(32.0f, 32.0f));
@@ -292,8 +337,7 @@ int main()
     int level = 1;
     bool gameOver = false;
 
-    // YENİ: HOLD MEKANİĞİ DEĞİŞKENLERİ
-    int holdParca = -1; // -1 kasanın boş olduğunu belirtir
+    int holdParca = -1;
     bool holdKullanildi = false;
 
     while (window.isOpen())
@@ -329,7 +373,7 @@ int main()
                         gameOver = false;
                         timer = 0; kilitTimer = 0.0f;
 
-                        holdParca = -1; // Kasayı da sıfırla
+                        holdParca = -1;
                         holdKullanildi = false;
 
                         siradakiParcalar.clear();
@@ -348,18 +392,15 @@ int main()
                     else if (event.key.code == sf::Keyboard::Left) dx = -1;
                     else if (event.key.code == sf::Keyboard::Right) dx = 1;
 
-                    // YENİ: 'C' Tuşu ile Kasa Kullanımı
                     else if (event.key.code == sf::Keyboard::C)
                     {
-                        if (!holdKullanildi) // Sadece yere düşene kadar 1 kez basılabilir
+                        if (!holdKullanildi)
                         {
                             if (holdParca == -1) {
-                                // Kasa boşsa: Elindekini koy, yenisini çek
                                 holdParca = n;
                                 n = parcaCek();
                             }
                             else {
-                                // Kasada varsa: Elindekiyle takas et
                                 int temp = n;
                                 n = holdParca;
                                 holdParca = temp;
@@ -401,7 +442,7 @@ int main()
 
                         timer = 0;
                         kilitTimer = 0.0f;
-                        holdKullanildi = false; // Taş yere oturduğunda kasa hakkı yenilenir
+                        holdKullanildi = false;
                     }
                 }
             }
@@ -452,7 +493,7 @@ int main()
 
                     timer = 0;
                     kilitTimer = 0.0f;
-                    holdKullanildi = false; // Taş kilitlendi, kasa hakkı geri geldi
+                    holdKullanildi = false;
                 }
             }
             else
@@ -480,6 +521,17 @@ int main()
                 if (satirDolu)
                 {
                     skor += 10;
+
+                    // YENİ: Anlık skor rekoru geçerse dosyayı güncelle
+                    if (skor > enYuksekSkor) {
+                        enYuksekSkor = skor;
+                        std::ofstream dosyaYaz("skor.txt");
+                        if (dosyaYaz.is_open()) {
+                            dosyaYaz << enYuksekSkor;
+                            dosyaYaz.close();
+                        }
+                    }
+
                     for (int k = i; k > 0; k--)
                         for (int j = 0; j < SUTUN; j++)
                             oyunAlani[k][j] = oyunAlani[k - 1][j];
@@ -497,7 +549,6 @@ int main()
         // --- ÇİZDİRME (RENDER) ---
         window.clear(sf::Color::Black);
 
-        // OYUN ALANI (GRID_X kadar sağa kaydırılarak çiziliyor)
         for (int i = 0; i < SATIR; i++) {
             for (int j = 0; j < SUTUN; j++) {
                 kare.setOutlineColor(sf::Color(50, 50, 50));
@@ -527,9 +578,7 @@ int main()
                 window.draw(kare);
             }
 
-            // SIRADAKİ 6 ŞEKLİ MİNYATÜR ÇİZDİRME (Sağ Panel)
             float siradakiBaslangicY = 150.f;
-
             for (int k = 0; k < 6; k++) {
                 int siradakiN = siradakiParcalar[k];
                 int siradakiRenkNumarasi = siradakiN + 1;
@@ -550,12 +599,11 @@ int main()
         }
 
         // PANELLERİ ÇAĞIR
-        solPanelCiz(window, holdParca, renkler);
+        solPanelCiz(window, holdParca, renkler, enYuksekSkor);
         sagPanelCiz(window, skor, level);
 
         if (gameOver)
         {
-            // Oyun alanına kırmızı filtre (Sadece ızgaranın üzerine)
             sf::RectangleShape kirmiziEkran(sf::Vector2f(SUTUN * 32.f, SATIR * 32.f));
             kirmiziEkran.setFillColor(sf::Color(150, 0, 0, 150));
             kirmiziEkran.setPosition(GRID_X, 0.f);
