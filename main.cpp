@@ -3,30 +3,28 @@
 #include <ctime>   
 #include <string>
 #include <vector> 
-#include <fstream> // YENİ: Dosya Okuma/Yazma (File I/O) için eklendi
+#include <fstream> 
 
 const int SATIR = 20;
 const int SUTUN = 10;
 int oyunAlani[SATIR][SUTUN] = { 0 };
 
 int sekiller[7][4] = {
-    {1,3,5,7}, // I Şekli
-    {2,4,5,7}, // Z Şekli
-    {3,5,4,6}, // S Şekli
-    {3,5,4,7}, // T Şekli
-    {2,3,5,7}, // L Şekli
-    {3,5,7,6}, // J Şekli
-    {2,3,4,5}  // O Şekli
+    {1,3,5,7}, // I 
+    {2,4,5,7}, // Z 
+    {3,5,4,6}, // S 
+    {3,5,4,7}, // T 
+    {2,3,5,7}, // L 
+    {3,5,7,6}, // J 
+    {2,3,4,5}  // O 
 };
 
 struct Nokta { int x, y; };
 Nokta a[4], b[4], hayalet[4];
 
-// OYUN ALANI KAYDIRMA OFSETİ
 const float GRID_X = 120.f;
 const float SAG_PANEL_X = 440.f;
 
-// --- MODERN TETRIS: KUYRUK VE 7-BAG ALGORİTMASI ---
 std::vector<int> siradakiParcalar;
 
 void torbaDoldur()
@@ -68,6 +66,35 @@ const int rakamlar[10][5][3] = {
     {{1,1,1},{1,0,1},{1,1,1},{0,0,1},{1,1,1}}
 };
 
+const int alfabe[26][5][3] = {
+    {{1,1,1},{1,0,1},{1,1,1},{1,0,1},{1,0,1}}, // A
+    {{1,1,0},{1,0,1},{1,1,0},{1,0,1},{1,1,0}}, // B
+    {{1,1,1},{1,0,0},{1,0,0},{1,0,0},{1,1,1}}, // C
+    {{1,1,0},{1,0,1},{1,0,1},{1,0,1},{1,1,0}}, // D
+    {{1,1,1},{1,0,0},{1,1,0},{1,0,0},{1,1,1}}, // E
+    {{1,1,1},{1,0,0},{1,1,0},{1,0,0},{1,0,0}}, // F
+    {{1,1,1},{1,0,0},{1,0,1},{1,0,1},{1,1,1}}, // G
+    {{1,0,1},{1,0,1},{1,1,1},{1,0,1},{1,0,1}}, // H
+    {{1,1,1},{0,1,0},{0,1,0},{0,1,0},{1,1,1}}, // I
+    {{0,0,1},{0,0,1},{0,0,1},{1,0,1},{1,1,1}}, // J
+    {{1,0,1},{1,1,0},{1,0,0},{1,1,0},{1,0,1}}, // K
+    {{1,0,0},{1,0,0},{1,0,0},{1,0,0},{1,1,1}}, // L
+    {{1,0,1},{1,1,1},{1,0,1},{1,0,1},{1,0,1}}, // M
+    {{1,1,1},{1,0,1},{1,0,1},{1,0,1},{1,0,1}}, // N
+    {{1,1,1},{1,0,1},{1,0,1},{1,0,1},{1,1,1}}, // O
+    {{1,1,1},{1,0,1},{1,1,1},{1,0,0},{1,0,0}}, // P
+    {{1,1,1},{1,0,1},{1,0,1},{0,1,1},{0,0,1}}, // Q
+    {{1,1,0},{1,0,1},{1,1,0},{1,0,1},{1,0,1}}, // R
+    {{1,1,1},{1,0,0},{1,1,1},{0,0,1},{1,1,1}}, // S
+    {{1,1,1},{0,1,0},{0,1,0},{0,1,0},{0,1,0}}, // T
+    {{1,0,1},{1,0,1},{1,0,1},{1,0,1},{1,1,1}}, // U
+    {{1,0,1},{1,0,1},{1,0,1},{1,0,1},{0,1,0}}, // V
+    {{1,0,1},{1,0,1},{1,1,1},{1,0,1},{1,0,1}}, // W
+    {{1,0,1},{1,0,1},{0,1,0},{1,0,1},{1,0,1}}, // X
+    {{1,0,1},{1,0,1},{1,1,1},{0,1,0},{0,1,0}}, // Y
+    {{1,1,1},{0,0,1},{0,1,0},{1,0,0},{1,1,1}}  // Z
+};
+
 const int skoryazisi[4][5][3] = {
     {{1,1,1},{1,0,0},{1,1,1},{0,0,1},{1,1,1}},
     {{1,0,1},{1,1,0},{1,0,0},{1,1,0},{1,0,1}},
@@ -90,13 +117,12 @@ const int holdYazisi[4][5][3] = {
     {{1,1,0},{1,0,1},{1,0,1},{1,0,1},{1,1,0}}
 };
 
-// YENİ: REKOR Yazısı Matrisi (R, E, K, O, R)
 const int rekorYazisi[5][5][3] = {
-    {{1,1,0},{1,0,1},{1,1,0},{1,0,1},{1,0,1}}, // R
-    {{1,1,1},{1,0,0},{1,1,0},{1,0,0},{1,1,1}}, // E
-    {{1,0,1},{1,1,0},{1,0,0},{1,1,0},{1,0,1}}, // K
-    {{1,1,1},{1,0,1},{1,0,1},{1,0,1},{1,1,1}}, // O
-    {{1,1,0},{1,0,1},{1,1,0},{1,0,1},{1,0,1}}  // R
+    {{1,1,0},{1,0,1},{1,1,0},{1,0,1},{1,0,1}},
+    {{1,1,1},{1,0,0},{1,1,0},{1,0,0},{1,1,1}},
+    {{1,0,1},{1,1,0},{1,0,0},{1,1,0},{1,0,1}},
+    {{1,1,1},{1,0,1},{1,0,1},{1,0,1},{1,1,1}},
+    {{1,1,0},{1,0,1},{1,1,0},{1,0,1},{1,0,1}}
 };
 
 const int gameYazisi[4][5][3] = {
@@ -113,8 +139,37 @@ const int overYazisi[4][5][3] = {
     {{1,1,0},{1,0,1},{1,1,0},{1,0,1},{1,0,1}}
 };
 
+void metinYazOrtali(sf::RenderWindow& window, std::string metin, float y, float pikselBoyutu, sf::Color renk)
+{
+    float harfBoslugu = pikselBoyutu * 5.5f;
+    float toplamGenislik = metin.length() * harfBoslugu - (harfBoslugu - (pikselBoyutu * 3.f));
+    float x = (580.f - toplamGenislik) / 2.f;
 
-// SOL PANEL ÇİZİM FONKSİYONU (Yüksek Skor Parametresi Eklendi)
+    sf::RectangleShape piksel(sf::Vector2f(pikselBoyutu, pikselBoyutu));
+    piksel.setFillColor(renk);
+
+    for (char c : metin) {
+        if (c == ' ') {
+            x += harfBoslugu;
+            continue;
+        }
+        if (c >= 'A' && c <= 'Z') {
+            int index = c - 'A';
+            for (int i = 0; i < 5; i++) {
+                for (int j = 0; j < 3; j++) {
+                    if (alfabe[index][i][j] == 1) {
+                        piksel.setPosition(x + (j * (pikselBoyutu + 1.f)), y + (i * (pikselBoyutu + 1.f)));
+                        window.draw(piksel);
+                    }
+                }
+            }
+        }
+        x += harfBoslugu;
+    }
+}
+
+enum OyunDurumu { MENU, OYUN, CREDITS };
+
 void solPanelCiz(sf::RenderWindow& window, int holdParca, sf::Color renkler[], int enYuksekSkor)
 {
     float pikselBoyutu = 6.0f;
@@ -130,7 +185,6 @@ void solPanelCiz(sf::RenderWindow& window, int holdParca, sf::Color renkler[], i
     yatayCizgi.setPosition(0.f, 130.f);
     window.draw(yatayCizgi);
 
-    // "HOLD" Başlığı
     piksel.setFillColor(sf::Color(180, 180, 180));
     float yaziX = 15.f;
     float yaziY = 30.f;
@@ -164,7 +218,6 @@ void solPanelCiz(sf::RenderWindow& window, int holdParca, sf::Color renkler[], i
         }
     }
 
-    // YENİ: "REKOR" Başlığı
     piksel.setFillColor(sf::Color(180, 180, 180));
     float rekorYaziX = 5.f;
     float rekorYaziY = 300.f;
@@ -180,8 +233,7 @@ void solPanelCiz(sf::RenderWindow& window, int holdParca, sf::Color renkler[], i
         rekorYaziX += 23.f;
     }
 
-    // YENİ: En Yüksek Skor Rakamları
-    piksel.setFillColor(sf::Color::Cyan); // Rekoru dikkat çekici bir renkle yazdıralım
+    piksel.setFillColor(sf::Color::Cyan);
     std::string rekorStr = std::to_string(enYuksekSkor);
     float rekorSayiX = 15.f;
     float rekorSayiY = 350.f;
@@ -199,7 +251,6 @@ void solPanelCiz(sf::RenderWindow& window, int holdParca, sf::Color renkler[], i
     }
 }
 
-// SAĞ PANEL ÇİZİM FONKSİYONU
 void sagPanelCiz(sf::RenderWindow& window, int skor, int level)
 {
     float baslangicX = SAG_PANEL_X + 15.f;
@@ -294,11 +345,33 @@ bool kontrol(Nokta* parca)
     return true;
 }
 
+void oyunuSifirla(int& skor, int& level, bool& gameOver, float& timer, float& kilitTimer, int& holdParca, bool& holdKullanildi, int& n, int& renkNumarasi)
+{
+    for (int i = 0; i < SATIR; i++)
+        for (int j = 0; j < SUTUN; j++)
+            oyunAlani[i][j] = 0;
+
+    skor = 0; level = 1;
+    gameOver = false;
+    timer = 0; kilitTimer = 0.0f;
+
+    holdParca = -1;
+    holdKullanildi = false;
+
+    siradakiParcalar.clear();
+    torbaDoldur();
+    n = parcaCek();
+    renkNumarasi = n + 1;
+    for (int i = 0; i < 4; i++) {
+        a[i].x = sekiller[n][i] % 2 + 4;
+        a[i].y = sekiller[n][i] / 2;
+    }
+}
+
 int main()
 {
     srand(static_cast<unsigned int>(time(0)));
 
-    // YENİ: Başlangıçta dosyadan yüksek skoru oku
     int enYuksekSkor = 0;
     std::ifstream dosyaOku("skor.txt");
     if (dosyaOku.is_open()) {
@@ -340,11 +413,17 @@ int main()
     int holdParca = -1;
     bool holdKullanildi = false;
 
+    OyunDurumu durum = MENU;
+    int menuSecim = 0;
+
     while (window.isOpen())
     {
         float zaman = saat.getElapsedTime().asSeconds();
         saat.restart();
-        timer += zaman;
+
+        if (durum == OYUN && !gameOver) {
+            timer += zaman;
+        }
 
         level = (skor / 100) + 1;
         float bazGecikme = 0.5f - ((level - 1) * 0.04f);
@@ -361,100 +440,124 @@ int main()
 
             if (event.type == sf::Event::KeyPressed)
             {
-                if (gameOver)
+                if (durum == MENU)
                 {
-                    if (event.key.code == sf::Keyboard::R)
-                    {
-                        for (int i = 0; i < SATIR; i++)
-                            for (int j = 0; j < SUTUN; j++)
-                                oyunAlani[i][j] = 0;
-
-                        skor = 0; level = 1;
-                        gameOver = false;
-                        timer = 0; kilitTimer = 0.0f;
-
-                        holdParca = -1;
-                        holdKullanildi = false;
-
-                        siradakiParcalar.clear();
-                        torbaDoldur();
-                        n = parcaCek();
-                        renkNumarasi = n + 1;
-                        for (int i = 0; i < 4; i++) {
-                            a[i].x = sekiller[n][i] % 2 + 4;
-                            a[i].y = sekiller[n][i] / 2;
+                    if (event.key.code == sf::Keyboard::Up) {
+                        menuSecim--;
+                        if (menuSecim < 0) menuSecim = 2;
+                    }
+                    else if (event.key.code == sf::Keyboard::Down) {
+                        menuSecim++;
+                        if (menuSecim > 2) menuSecim = 0;
+                    }
+                    else if (event.key.code == sf::Keyboard::Enter || event.key.code == sf::Keyboard::Space) {
+                        if (menuSecim == 0) {
+                            oyunuSifirla(skor, level, gameOver, timer, kilitTimer, holdParca, holdKullanildi, n, renkNumarasi);
+                            durum = OYUN;
+                        }
+                        else if (menuSecim == 1) {
+                            durum = CREDITS;
+                        }
+                        else if (menuSecim == 2) {
+                            window.close();
                         }
                     }
                 }
-                else
+                else if (durum == CREDITS)
                 {
-                    if (event.key.code == sf::Keyboard::Up) dondur = true;
-                    else if (event.key.code == sf::Keyboard::Left) dx = -1;
-                    else if (event.key.code == sf::Keyboard::Right) dx = 1;
-
-                    else if (event.key.code == sf::Keyboard::C)
+                    if (event.key.code == sf::Keyboard::Escape || event.key.code == sf::Keyboard::Enter) {
+                        durum = MENU;
+                    }
+                }
+                else if (durum == OYUN)
+                {
+                    if (gameOver)
                     {
-                        if (!holdKullanildi)
-                        {
-                            if (holdParca == -1) {
-                                holdParca = n;
-                                n = parcaCek();
-                            }
-                            else {
-                                int temp = n;
-                                n = holdParca;
-                                holdParca = temp;
-                            }
+                        if (event.key.code == sf::Keyboard::R) {
+                            oyunuSifirla(skor, level, gameOver, timer, kilitTimer, holdParca, holdKullanildi, n, renkNumarasi);
+                        }
+                        else if (event.key.code == sf::Keyboard::Escape) {
+                            durum = MENU;
+                        }
+                    }
+                    else
+                    {
+                        if (event.key.code == sf::Keyboard::Up) dondur = true;
+                        else if (event.key.code == sf::Keyboard::Left) dx = -1;
+                        else if (event.key.code == sf::Keyboard::Right) dx = 1;
 
+                        else if (event.key.code == sf::Keyboard::C)
+                        {
+                            if (!holdKullanildi)
+                            {
+                                if (holdParca == -1) {
+                                    holdParca = n;
+                                    n = parcaCek();
+                                }
+                                else {
+                                    int temp = n;
+                                    n = holdParca;
+                                    holdParca = temp;
+                                }
+
+                                renkNumarasi = n + 1;
+                                for (int i = 0; i < 4; i++) {
+                                    a[i].x = sekiller[n][i] % 2 + 4;
+                                    a[i].y = sekiller[n][i] / 2;
+                                }
+
+                                if (!kontrol(a)) {
+                                    gameOver = true;
+                                }
+
+                                holdKullanildi = true;
+                                timer = 0; kilitTimer = 0.0f;
+                            }
+                        }
+                        else if (event.key.code == sf::Keyboard::Space)
+                        {
+                            while (kontrol(a))
+                            {
+                                for (int i = 0; i < 4; i++) b[i] = a[i];
+                                for (int i = 0; i < 4; i++) a[i].y += 1;
+                            }
+                            for (int i = 0; i < 4; i++) a[i] = b[i];
+
+                            for (int i = 0; i < 4; i++) oyunAlani[a[i].y][a[i].x] = renkNumarasi;
+
+                            n = parcaCek();
                             renkNumarasi = n + 1;
                             for (int i = 0; i < 4; i++) {
                                 a[i].x = sekiller[n][i] % 2 + 4;
                                 a[i].y = sekiller[n][i] / 2;
                             }
 
-                            if (!kontrol(a)) gameOver = true;
+                            if (!kontrol(a)) {
+                                gameOver = true;
+                            }
 
-                            holdKullanildi = true;
-                            timer = 0;
-                            kilitTimer = 0.0f;
+                            timer = 0; kilitTimer = 0.0f;
+                            holdKullanildi = false;
                         }
-                    }
-
-                    else if (event.key.code == sf::Keyboard::Space)
-                    {
-                        while (kontrol(a))
-                        {
-                            for (int i = 0; i < 4; i++) b[i] = a[i];
-                            for (int i = 0; i < 4; i++) a[i].y += 1;
+                        else if (event.key.code == sf::Keyboard::Escape) {
+                            durum = MENU;
                         }
-                        for (int i = 0; i < 4; i++) a[i] = b[i];
-
-                        for (int i = 0; i < 4; i++) oyunAlani[a[i].y][a[i].x] = renkNumarasi;
-
-                        n = parcaCek();
-                        renkNumarasi = n + 1;
-                        for (int i = 0; i < 4; i++) {
-                            a[i].x = sekiller[n][i] % 2 + 4;
-                            a[i].y = sekiller[n][i] / 2;
-                        }
-
-                        if (!kontrol(a)) gameOver = true;
-
-                        timer = 0;
-                        kilitTimer = 0.0f;
-                        holdKullanildi = false;
                     }
                 }
             }
         }
 
-        if (!gameOver)
+        if (durum == OYUN && !gameOver)
         {
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) gecikme = 0.05f;
             else gecikme = bazGecikme;
 
-            for (int i = 0; i < 4; i++) { b[i] = a[i]; a[i].x += dx; }
-            if (!kontrol(a)) { for (int i = 0; i < 4; i++) a[i] = b[i]; }
+            if (dx != 0) {
+                for (int i = 0; i < 4; i++) { b[i] = a[i]; a[i].x += dx; }
+                if (!kontrol(a)) {
+                    for (int i = 0; i < 4; i++) a[i] = b[i];
+                }
+            }
 
             if (dondur)
             {
@@ -466,7 +569,9 @@ int main()
                     a[i].x = merkez.x - x;
                     a[i].y = merkez.y + y;
                 }
-                if (!kontrol(a)) { for (int i = 0; i < 4; i++) a[i] = b[i]; }
+                if (!kontrol(a)) {
+                    for (int i = 0; i < 4; i++) a[i] = b[i];
+                }
             }
 
             bool asagiInilebilir = true;
@@ -489,17 +594,17 @@ int main()
                         a[i].y = sekiller[n][i] / 2;
                     }
 
-                    if (!kontrol(a)) gameOver = true;
+                    if (!kontrol(a)) {
+                        gameOver = true;
+                    }
 
-                    timer = 0;
-                    kilitTimer = 0.0f;
+                    timer = 0; kilitTimer = 0.0f;
                     holdKullanildi = false;
                 }
             }
             else
             {
                 kilitTimer = 0.0f;
-
                 if (timer > gecikme)
                 {
                     for (int i = 0; i < 4; i++) a[i].y += 1;
@@ -522,7 +627,6 @@ int main()
                 {
                     skor += 10;
 
-                    // YENİ: Anlık skor rekoru geçerse dosyayı güncelle
                     if (skor > enYuksekSkor) {
                         enYuksekSkor = skor;
                         std::ofstream dosyaYaz("skor.txt");
@@ -546,100 +650,128 @@ int main()
             for (int i = 0; i < 4; i++) hayalet[i].y -= 1;
         }
 
-        // --- ÇİZDİRME (RENDER) ---
-        window.clear(sf::Color::Black);
+        window.clear(sf::Color(10, 10, 15));
 
-        for (int i = 0; i < SATIR; i++) {
-            for (int j = 0; j < SUTUN; j++) {
-                kare.setOutlineColor(sf::Color(50, 50, 50));
-                if (oyunAlani[i][j] == 0) kare.setFillColor(sf::Color(20, 20, 20));
-                else kare.setFillColor(renkler[oyunAlani[i][j]]);
-
-                kare.setPosition(GRID_X + j * 32.f, i * 32.f);
-                window.draw(kare);
-            }
-        }
-
-        if (!gameOver)
+        if (durum == MENU)
         {
-            for (int i = 0; i < 4; i++) {
-                sf::Color hayaletRengi = renkler[renkNumarasi];
-                hayaletRengi.a = 40;
-                kare.setFillColor(hayaletRengi);
-                kare.setOutlineColor(renkler[renkNumarasi]);
-                kare.setPosition(GRID_X + hayalet[i].x * 32.f, hayalet[i].y * 32.f);
-                window.draw(kare);
+            metinYazOrtali(window, "TETRIS", 80.f, 10.f, sf::Color(0, 255, 255));
+
+            sf::Color renkBasla = (menuSecim == 0) ? sf::Color::Yellow : sf::Color(100, 100, 100);
+            sf::Color renkEkmek = (menuSecim == 1) ? sf::Color::Yellow : sf::Color(100, 100, 100);
+            sf::Color renkCikis = (menuSecim == 2) ? sf::Color::Yellow : sf::Color(100, 100, 100);
+
+            metinYazOrtali(window, "BASLA", 250.f, 6.f, renkBasla);
+            metinYazOrtali(window, "EMEGI GECENLER", 320.f, 5.f, renkEkmek);
+            metinYazOrtali(window, "CIKIS", 390.f, 6.f, renkCikis);
+
+            metinYazOrtali(window, "YON TUSLARI ILE SEC ENTER ILE ONAYLA", 550.f, 3.f, sf::Color(80, 80, 80));
+        }
+        else if (durum == CREDITS)
+        {
+            metinYazOrtali(window, "PROGRAMLAMA II PROJESI", 50.f, 4.f, sf::Color::Cyan);
+
+            metinYazOrtali(window, "PROJE DANISMANI", 150.f, 5.f, sf::Color::Red);
+            metinYazOrtali(window, "IRFAN KOSESOY", 210.f, 4.f, sf::Color::White);
+
+            metinYazOrtali(window, "GELISTIRICI", 310.f, 5.f, sf::Color::Red);
+            metinYazOrtali(window, "AHMET EMIR ORNEKOL", 370.f, 4.f, sf::Color::White);
+            metinYazOrtali(window, "GEMINI", 420.f, 4.f, sf::Color::White);
+
+            metinYazOrtali(window, "MENUYE DONMEK ICIN ESC", 550.f, 3.f, sf::Color::Yellow);
+        }
+        else if (durum == OYUN)
+        {
+            for (int i = 0; i < SATIR; i++) {
+                for (int j = 0; j < SUTUN; j++) {
+                    kare.setOutlineColor(sf::Color(50, 50, 50));
+                    if (oyunAlani[i][j] == 0) kare.setFillColor(sf::Color(20, 20, 20));
+                    else kare.setFillColor(renkler[oyunAlani[i][j]]);
+
+                    kare.setPosition(GRID_X + j * 32.f, i * 32.f);
+                    window.draw(kare);
+                }
             }
 
-            for (int i = 0; i < 4; i++) {
-                kare.setFillColor(renkler[renkNumarasi]);
-                kare.setOutlineColor(sf::Color(50, 50, 50));
-                kare.setPosition(GRID_X + a[i].x * 32.f, a[i].y * 32.f);
-                window.draw(kare);
-            }
-
-            float siradakiBaslangicY = 150.f;
-            for (int k = 0; k < 6; k++) {
-                int siradakiN = siradakiParcalar[k];
-                int siradakiRenkNumarasi = siradakiN + 1;
-
-                kucukKare.setFillColor(renkler[siradakiRenkNumarasi]);
-                kucukKare.setOutlineColor(sf::Color(50, 50, 50));
-
-                float siradakiOffsetX = SAG_PANEL_X + 55.f;
-                if (siradakiN == 0 || siradakiN == 6) siradakiOffsetX -= 7.f;
+            if (!gameOver)
+            {
+                for (int i = 0; i < 4; i++) {
+                    sf::Color hayaletRengi = renkler[renkNumarasi];
+                    hayaletRengi.a = 40;
+                    kare.setFillColor(hayaletRengi);
+                    kare.setOutlineColor(renkler[renkNumarasi]);
+                    kare.setPosition(GRID_X + hayalet[i].x * 32.f, hayalet[i].y * 32.f);
+                    window.draw(kare);
+                }
 
                 for (int i = 0; i < 4; i++) {
-                    int pX = sekiller[siradakiN][i] % 2;
-                    int pY = sekiller[siradakiN][i] / 2;
-                    kucukKare.setPosition(siradakiOffsetX + (pX * kucukKareBoyut), siradakiBaslangicY + (k * 48.f) + (pY * kucukKareBoyut));
-                    window.draw(kucukKare);
+                    kare.setFillColor(renkler[renkNumarasi]);
+                    kare.setOutlineColor(sf::Color(50, 50, 50));
+                    kare.setPosition(GRID_X + a[i].x * 32.f, a[i].y * 32.f);
+                    window.draw(kare);
                 }
-            }
-        }
 
-        // PANELLERİ ÇAĞIR
-        solPanelCiz(window, holdParca, renkler, enYuksekSkor);
-        sagPanelCiz(window, skor, level);
+                float siradakiBaslangicY = 150.f;
+                for (int k = 0; k < 6; k++) {
+                    int siradakiN = siradakiParcalar[k];
+                    int siradakiRenkNumarasi = siradakiN + 1;
 
-        if (gameOver)
-        {
-            sf::RectangleShape kirmiziEkran(sf::Vector2f(SUTUN * 32.f, SATIR * 32.f));
-            kirmiziEkran.setFillColor(sf::Color(150, 0, 0, 150));
-            kirmiziEkran.setPosition(GRID_X, 0.f);
-            window.draw(kirmiziEkran);
+                    kucukKare.setFillColor(renkler[siradakiRenkNumarasi]);
+                    kucukKare.setOutlineColor(sf::Color(50, 50, 50));
 
-            sf::RectangleShape goPiksel(sf::Vector2f(5.0f, 5.0f));
-            goPiksel.setFillColor(sf::Color::Red);
+                    float siradakiOffsetX = SAG_PANEL_X + 55.f;
+                    if (siradakiN == 0 || siradakiN == 6) siradakiOffsetX -= 7.f;
 
-            float goBaslangicX = SAG_PANEL_X + 25.f;
-            float gameY = 250.f;
-            float overY = 300.f;
-
-            float yaziX = goBaslangicX;
-            for (int h = 0; h < 4; h++) {
-                for (int i = 0; i < 5; i++) {
-                    for (int j = 0; j < 3; j++) {
-                        if (gameYazisi[h][i][j] == 1) {
-                            goPiksel.setPosition(yaziX + (j * 6.f), gameY + (i * 6.f));
-                            window.draw(goPiksel);
-                        }
+                    for (int i = 0; i < 4; i++) {
+                        int pX = sekiller[siradakiN][i] % 2;
+                        int pY = sekiller[siradakiN][i] / 2;
+                        kucukKare.setPosition(siradakiOffsetX + (pX * kucukKareBoyut), siradakiBaslangicY + (k * 48.f) + (pY * kucukKareBoyut));
+                        window.draw(kucukKare);
                     }
                 }
-                yaziX += 24.f;
             }
 
-            yaziX = goBaslangicX;
-            for (int h = 0; h < 4; h++) {
-                for (int i = 0; i < 5; i++) {
-                    for (int j = 0; j < 3; j++) {
-                        if (overYazisi[h][i][j] == 1) {
-                            goPiksel.setPosition(yaziX + (j * 6.f), overY + (i * 6.f));
-                            window.draw(goPiksel);
+            solPanelCiz(window, holdParca, renkler, enYuksekSkor);
+            sagPanelCiz(window, skor, level);
+
+            if (gameOver)
+            {
+                sf::RectangleShape kirmiziEkran(sf::Vector2f(SUTUN * 32.f, SATIR * 32.f));
+                kirmiziEkran.setFillColor(sf::Color(150, 0, 0, 150));
+                kirmiziEkran.setPosition(GRID_X, 0.f);
+                window.draw(kirmiziEkran);
+
+                sf::RectangleShape goPiksel(sf::Vector2f(5.0f, 5.0f));
+                goPiksel.setFillColor(sf::Color::Red);
+
+                float goBaslangicX = SAG_PANEL_X + 25.f;
+                float gameY = 250.f;
+                float overY = 300.f;
+
+                float yaziX = goBaslangicX;
+                for (int h = 0; h < 4; h++) {
+                    for (int i = 0; i < 5; i++) {
+                        for (int j = 0; j < 3; j++) {
+                            if (gameYazisi[h][i][j] == 1) {
+                                goPiksel.setPosition(yaziX + (j * 6.f), gameY + (i * 6.f));
+                                window.draw(goPiksel);
+                            }
                         }
                     }
+                    yaziX += 24.f;
                 }
-                yaziX += 24.f;
+
+                yaziX = goBaslangicX;
+                for (int h = 0; h < 4; h++) {
+                    for (int i = 0; i < 5; i++) {
+                        for (int j = 0; j < 3; j++) {
+                            if (overYazisi[h][i][j] == 1) {
+                                goPiksel.setPosition(yaziX + (j * 6.f), overY + (i * 6.f));
+                                window.draw(goPiksel);
+                            }
+                        }
+                    }
+                    yaziX += 24.f;
+                }
             }
         }
 
