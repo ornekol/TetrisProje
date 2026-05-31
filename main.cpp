@@ -21,6 +21,10 @@ int sekiller[7][4] = {
 struct Nokta { int x, y; };
 Nokta a[4], b[4], hayalet[4];
 
+// OYUN ALANI KAYDIRMA OFSETİ (Sol panel eklendiği için Izgara merkezde)
+const float GRID_X = 120.f;
+const float SAG_PANEL_X = 440.f; // 120 (Sol) + 320 (Oyun) = 440
+
 // --- MODERN TETRIS: KUYRUK VE 7-BAG ALGORİTMASI ---
 std::vector<int> siradakiParcalar;
 
@@ -29,13 +33,11 @@ void torbaDoldur()
     std::vector<int> yeniTorba;
     for (int i = 0; i < 7; i++) yeniTorba.push_back(i);
 
-    // Fisher-Yates Karıştırma
     for (int i = 6; i > 0; i--) {
         int j = rand() % (i + 1);
         std::swap(yeniTorba[i], yeniTorba[j]);
     }
 
-    // Karışmış yeni torbayı ana kuyruğun sonuna ekle
     for (int p : yeniTorba) {
         siradakiParcalar.push_back(p);
     }
@@ -43,15 +45,11 @@ void torbaDoldur()
 
 int parcaCek()
 {
-    // Kuyrukta yeterli parça (en az 6 gösterge + 1 aktif) kalmadıysa yeni torba ekle
     if (siradakiParcalar.size() <= 7) {
         torbaDoldur();
     }
-
-    // Kuyruğun en başındakini al ve kuyruktan sil
     int secilenParca = siradakiParcalar.front();
     siradakiParcalar.erase(siradakiParcalar.begin());
-
     return secilenParca;
 }
 
@@ -98,22 +96,85 @@ const int overYazisi[4][5][3] = {
     {{1,1,0},{1,0,1},{1,1,0},{1,0,1},{1,0,1}}
 };
 
-void retroPanelCiz(sf::RenderWindow& window, int skor, int level)
+// YENİ: HOLD YAZISI MATRİSİ (H, O, L, D)
+const int holdYazisi[4][5][3] = {
+    {{1,0,1},{1,0,1},{1,1,1},{1,0,1},{1,0,1}},
+    {{1,1,1},{1,0,1},{1,0,1},{1,0,1},{1,1,1}},
+    {{1,0,0},{1,0,0},{1,0,0},{1,0,0},{1,1,1}},
+    {{1,1,0},{1,0,1},{1,0,1},{1,0,1},{1,1,0}}
+};
+
+// YENİ: SOL PANEL (KASA) ÇİZİM FONKSİYONU
+void solPanelCiz(sf::RenderWindow& window, int holdParca, sf::Color renkler[])
 {
-    float baslangicX = SUTUN * 32.f + 15.f;
+    float pikselBoyutu = 6.0f;
+    sf::RectangleShape piksel(sf::Vector2f(pikselBoyutu, pikselBoyutu));
+
+    // Sol panel ayırıcı çizgisi (Oyun alanıyla arasına)
+    sf::RectangleShape dikeyCizgi(sf::Vector2f(2.f, SATIR * 32.f));
+    dikeyCizgi.setFillColor(sf::Color(70, 70, 70));
+    dikeyCizgi.setPosition(GRID_X - 2.f, 0.f);
+    window.draw(dikeyCizgi);
+
+    sf::RectangleShape yatayCizgi(sf::Vector2f(GRID_X - 2.f, 2.f));
+    yatayCizgi.setFillColor(sf::Color(70, 70, 70));
+    yatayCizgi.setPosition(0.f, 130.f);
+    window.draw(yatayCizgi);
+
+    // "HOLD" Başlığı
+    piksel.setFillColor(sf::Color(180, 180, 180));
+    float yaziX = 15.f;
+    float yaziY = 30.f;
+    for (int h = 0; h < 4; h++) {
+        for (int i = 0; i < 5; i++) {
+            for (int j = 0; j < 3; j++) {
+                if (holdYazisi[h][i][j] == 1) {
+                    piksel.setPosition(yaziX + (j * (pikselBoyutu + 1)), yaziY + (i * (pikselBoyutu + 1)));
+                    window.draw(piksel);
+                }
+            }
+        }
+        yaziX += 26.f;
+    }
+
+    // Kasadaki parçayı çizdir (Eğer varsa)
+    if (holdParca != -1) {
+        float kucukKareBoyut = 14.f;
+        sf::RectangleShape kucukKare(sf::Vector2f(kucukKareBoyut, kucukKareBoyut));
+        kucukKare.setOutlineThickness(-1.f);
+        kucukKare.setFillColor(renkler[holdParca + 1]);
+        kucukKare.setOutlineColor(sf::Color(50, 50, 50));
+
+        float holdOffsetX = 35.f;
+        if (holdParca == 0 || holdParca == 6) holdOffsetX -= 7.f;
+
+        for (int i = 0; i < 4; i++) {
+            int pX = sekiller[holdParca][i] % 2;
+            int pY = sekiller[holdParca][i] / 2;
+            kucukKare.setPosition(holdOffsetX + (pX * kucukKareBoyut), 70.f + (pY * kucukKareBoyut));
+            window.draw(kucukKare);
+        }
+    }
+}
+
+// SAĞ PANEL ÇİZİM FONKSİYONU
+void sagPanelCiz(sf::RenderWindow& window, int skor, int level)
+{
+    float baslangicX = SAG_PANEL_X + 15.f;
     float pikselBoyutu = 6.0f;
     sf::RectangleShape piksel(sf::Vector2f(pikselBoyutu, pikselBoyutu));
 
     sf::RectangleShape dikeyCizgi(sf::Vector2f(2.f, SATIR * 32.f));
     dikeyCizgi.setFillColor(sf::Color(70, 70, 70));
-    dikeyCizgi.setPosition(SUTUN * 32.f, 0.f);
+    dikeyCizgi.setPosition(SAG_PANEL_X, 0.f);
     window.draw(dikeyCizgi);
 
     sf::RectangleShape yatayCizgi(sf::Vector2f(140.f, 2.f));
     yatayCizgi.setFillColor(sf::Color(70, 70, 70));
-    yatayCizgi.setPosition(SUTUN * 32.f, 130.f);
+    yatayCizgi.setPosition(SAG_PANEL_X, 130.f);
     window.draw(yatayCizgi);
 
+    // SKOR Yazısı
     piksel.setFillColor(sf::Color(180, 180, 180));
     float yaziX = baslangicX;
     float yaziY = 30.f;
@@ -129,12 +190,11 @@ void retroPanelCiz(sf::RenderWindow& window, int skor, int level)
         yaziX += 30.f;
     }
 
+    // Skor Rakamları
     piksel.setFillColor(sf::Color::White);
     std::string sayiStr = std::to_string(skor);
-
     float sayiX = baslangicX + 27.f;
     float sayiY = 80.f;
-
     for (char c : sayiStr) {
         int rakam = c - '0';
         for (int i = 0; i < 5; i++) {
@@ -148,6 +208,7 @@ void retroPanelCiz(sf::RenderWindow& window, int skor, int level)
         sayiX += 28.f;
     }
 
+    // LEVEL Yazısı
     piksel.setFillColor(sf::Color(180, 180, 180));
     float lvlYaziX = baslangicX - 5.f;
     float lvlYaziY = 470.f;
@@ -163,11 +224,11 @@ void retroPanelCiz(sf::RenderWindow& window, int skor, int level)
         lvlYaziX += 24.f;
     }
 
+    // Level Rakamları
     piksel.setFillColor(sf::Color::Yellow);
     std::string levelStr = std::to_string(level);
     float lvlSayiX = baslangicX + 35.f;
     float lvlSayiY = 520.f;
-
     for (char c : levelStr) {
         int rakam = c - '0';
         for (int i = 0; i < 5; i++) {
@@ -199,12 +260,12 @@ int main()
 {
     srand(static_cast<unsigned int>(time(0)));
 
-    sf::RenderWindow window(sf::VideoMode(SUTUN * 32 + 140, SATIR * 32), "SFML Tetris");
+    // Genişlik: 120 (Sol) + 320 (Oyun) + 140 (Sağ) = 580 Piksel
+    sf::RenderWindow window(sf::VideoMode(580, SATIR * 32), "SFML Tetris");
 
     sf::RectangleShape kare(sf::Vector2f(32.0f, 32.0f));
     kare.setOutlineThickness(-1.f);
 
-    // Gösterge paneli için 14x14 boyutunda minyatür kare
     float kucukKareBoyut = 14.f;
     sf::RectangleShape kucukKare(sf::Vector2f(kucukKareBoyut, kucukKareBoyut));
     kucukKare.setOutlineThickness(-1.f);
@@ -214,7 +275,6 @@ int main()
         sf::Color(128, 0, 128), sf::Color(255, 165, 0), sf::Color::Blue, sf::Color::Yellow
     };
 
-    // İlk kurulum: Kuyruğu doldur ve ilk parçayı sahneye al
     torbaDoldur();
     int n = parcaCek();
     int renkNumarasi = n + 1;
@@ -231,6 +291,10 @@ int main()
     int skor = 0;
     int level = 1;
     bool gameOver = false;
+
+    // YENİ: HOLD MEKANİĞİ DEĞİŞKENLERİ
+    int holdParca = -1; // -1 kasanın boş olduğunu belirtir
+    bool holdKullanildi = false;
 
     while (window.isOpen())
     {
@@ -261,11 +325,12 @@ int main()
                             for (int j = 0; j < SUTUN; j++)
                                 oyunAlani[i][j] = 0;
 
-                        skor = 0;
-                        level = 1;
+                        skor = 0; level = 1;
                         gameOver = false;
-                        timer = 0;
-                        kilitTimer = 0.0f;
+                        timer = 0; kilitTimer = 0.0f;
+
+                        holdParca = -1; // Kasayı da sıfırla
+                        holdKullanildi = false;
 
                         siradakiParcalar.clear();
                         torbaDoldur();
@@ -282,6 +347,37 @@ int main()
                     if (event.key.code == sf::Keyboard::Up) dondur = true;
                     else if (event.key.code == sf::Keyboard::Left) dx = -1;
                     else if (event.key.code == sf::Keyboard::Right) dx = 1;
+
+                    // YENİ: 'C' Tuşu ile Kasa Kullanımı
+                    else if (event.key.code == sf::Keyboard::C)
+                    {
+                        if (!holdKullanildi) // Sadece yere düşene kadar 1 kez basılabilir
+                        {
+                            if (holdParca == -1) {
+                                // Kasa boşsa: Elindekini koy, yenisini çek
+                                holdParca = n;
+                                n = parcaCek();
+                            }
+                            else {
+                                // Kasada varsa: Elindekiyle takas et
+                                int temp = n;
+                                n = holdParca;
+                                holdParca = temp;
+                            }
+
+                            renkNumarasi = n + 1;
+                            for (int i = 0; i < 4; i++) {
+                                a[i].x = sekiller[n][i] % 2 + 4;
+                                a[i].y = sekiller[n][i] / 2;
+                            }
+
+                            if (!kontrol(a)) gameOver = true;
+
+                            holdKullanildi = true;
+                            timer = 0;
+                            kilitTimer = 0.0f;
+                        }
+                    }
 
                     else if (event.key.code == sf::Keyboard::Space)
                     {
@@ -305,6 +401,7 @@ int main()
 
                         timer = 0;
                         kilitTimer = 0.0f;
+                        holdKullanildi = false; // Taş yere oturduğunda kasa hakkı yenilenir
                     }
                 }
             }
@@ -355,6 +452,7 @@ int main()
 
                     timer = 0;
                     kilitTimer = 0.0f;
+                    holdKullanildi = false; // Taş kilitlendi, kasa hakkı geri geldi
                 }
             }
             else
@@ -399,13 +497,14 @@ int main()
         // --- ÇİZDİRME (RENDER) ---
         window.clear(sf::Color::Black);
 
+        // OYUN ALANI (GRID_X kadar sağa kaydırılarak çiziliyor)
         for (int i = 0; i < SATIR; i++) {
             for (int j = 0; j < SUTUN; j++) {
                 kare.setOutlineColor(sf::Color(50, 50, 50));
                 if (oyunAlani[i][j] == 0) kare.setFillColor(sf::Color(20, 20, 20));
                 else kare.setFillColor(renkler[oyunAlani[i][j]]);
 
-                kare.setPosition(j * 32.f, i * 32.f);
+                kare.setPosition(GRID_X + j * 32.f, i * 32.f);
                 window.draw(kare);
             }
         }
@@ -417,19 +516,19 @@ int main()
                 hayaletRengi.a = 40;
                 kare.setFillColor(hayaletRengi);
                 kare.setOutlineColor(renkler[renkNumarasi]);
-                kare.setPosition(hayalet[i].x * 32.f, hayalet[i].y * 32.f);
+                kare.setPosition(GRID_X + hayalet[i].x * 32.f, hayalet[i].y * 32.f);
                 window.draw(kare);
             }
 
             for (int i = 0; i < 4; i++) {
                 kare.setFillColor(renkler[renkNumarasi]);
                 kare.setOutlineColor(sf::Color(50, 50, 50));
-                kare.setPosition(a[i].x * 32.f, a[i].y * 32.f);
+                kare.setPosition(GRID_X + a[i].x * 32.f, a[i].y * 32.f);
                 window.draw(kare);
             }
 
-            // --- YENİ: SIRADAKİ 6 ŞEKLİ MİNYATÜR ÇİZDİRME ---
-            float siradakiBaslangicY = 150.f; // Çizginin hemen altı
+            // SIRADAKİ 6 ŞEKLİ MİNYATÜR ÇİZDİRME (Sağ Panel)
+            float siradakiBaslangicY = 150.f;
 
             for (int k = 0; k < 6; k++) {
                 int siradakiN = siradakiParcalar[k];
@@ -438,9 +537,8 @@ int main()
                 kucukKare.setFillColor(renkler[siradakiRenkNumarasi]);
                 kucukKare.setOutlineColor(sf::Color(50, 50, 50));
 
-                // Şekilleri ortalamak için ince ayar
-                float siradakiOffsetX = SUTUN * 32.f + 55.f;
-                if (siradakiN == 0 || siradakiN == 6) siradakiOffsetX -= 7.f; // Çubuk ve Kareyi biraz sola kaydır
+                float siradakiOffsetX = SAG_PANEL_X + 55.f;
+                if (siradakiN == 0 || siradakiN == 6) siradakiOffsetX -= 7.f;
 
                 for (int i = 0; i < 4; i++) {
                     int pX = sekiller[siradakiN][i] % 2;
@@ -451,19 +549,23 @@ int main()
             }
         }
 
-        retroPanelCiz(window, skor, level);
+        // PANELLERİ ÇAĞIR
+        solPanelCiz(window, holdParca, renkler);
+        sagPanelCiz(window, skor, level);
 
         if (gameOver)
         {
+            // Oyun alanına kırmızı filtre (Sadece ızgaranın üzerine)
             sf::RectangleShape kirmiziEkran(sf::Vector2f(SUTUN * 32.f, SATIR * 32.f));
             kirmiziEkran.setFillColor(sf::Color(150, 0, 0, 150));
+            kirmiziEkran.setPosition(GRID_X, 0.f);
             window.draw(kirmiziEkran);
 
             sf::RectangleShape goPiksel(sf::Vector2f(5.0f, 5.0f));
             goPiksel.setFillColor(sf::Color::Red);
 
-            float goBaslangicX = SUTUN * 32.f + 25.f;
-            float gameY = 250.f; // Yazıyı 6'lı listenin gizlendiği alana ortaladık
+            float goBaslangicX = SAG_PANEL_X + 25.f;
+            float gameY = 250.f;
             float overY = 300.f;
 
             float yaziX = goBaslangicX;
